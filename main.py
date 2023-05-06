@@ -97,7 +97,7 @@ if __name__ == "__main__":
     
     print(get_available_devices(token))
 
-    transfer_playback(token, "662e00a59eeb9d08b0f0b28dc18657c5ccb1e3c9", True)
+    
 
     #token, refresh_token = get_new_token(refresh_token)
     #print(get_profile(token))
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     #print(songs_in_A_and_B(token, pop_id, jiggy_wigs_id))
 
 
-    # Getting songs of an artistspotify:track:064eZtt58wbBfhr2842Osz
+    # Getting songs of an artists
     #token = get_token()
     #result = search_for_artist(token, "ACDC")
     #artist_id = result["id"]
