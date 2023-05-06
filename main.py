@@ -10,18 +10,25 @@ import socket
 from urllib import parse
 
 from secrets import *
-redirect_uri = 'http://localhost:8080'
+
+port = 8080
+redirect_uri = f'http://localhost:{port}'
 
 def random_string(len):
     return ''.join(random.choice(string.ascii_lowercase) for i in range(len))
 
-
+# Returns base 64 encoding of the hash of the code_verifier (which is a random string)
 def generate_code_challenge(code_verifier):
     m = hashlib.sha256()
     m.update(code_verifier.encode())
     return base64.b64encode(m.digest())
 
-def authorize(code_verifier):
+# Prompt user to sign in and returns a token
+def authorize():
+    # Generate a random string
+    code_verifier = random_string(128)
+
+    # Generate authentication URL and open browser to authentication window
     state = random_string(16)
     scope = 'user-read-playback-state user-modify-playback-state user-read-currently-playing user-read-private'
 
@@ -29,16 +36,59 @@ def authorize(code_verifier):
     url = "https://accounts.spotify.com/authorize" + args
     webbrowser.open(url)
 
+    # Open a socket to listen for callback
     s = socket.socket()
-    s.bind(('localhost', 8080))
+    s.bind(('localhost', port))
     s.listen(1)
     conn, addr = s.accept()
+
+    # Get response
     resp = conn.recv(1024).decode()
-    conn.close()
-    s.close()
 
-    code = parse.parse_qs(parse.urlparse(resp).query)['code'][0]
+    # Try to get code from callback url, if it succeeds, close window
+    # If it fails, display fail message in browser and return None
+    try:
+        code = parse.parse_qs(parse.urlparse(resp).query)['code'][0]
+        reply = """
+HTTP/1.1 200 OK
+Content-Type: text/html
 
+
+<html>
+    <head>
+        <title>Success</title>
+        <script>
+            window.close()
+        </script>
+    </head>
+</html>
+"""
+        conn.sendall(reply.encode())
+
+        conn.close()
+        s.close()
+    except:
+        reply = """
+HTTP/1.1 200 OK
+Content-Type: text/html
+
+
+<html>
+    <head>
+        <title>Fail</title>
+    </head>
+    <body>
+        <p>Failed to get Authentication code</p>
+    </body
+</html>
+"""
+        conn.sendall(reply.encode())
+
+        conn.close()
+        s.close()
+        return None
+
+    
     ### Requesting access token ###
     url = "https://accounts.spotify.com/api/token"
     headers = {
@@ -51,9 +101,24 @@ def authorize(code_verifier):
             "code_verifier": code_verifier}
     result = post(url, headers=headers, data=data)
     json_result = json.loads(result.content)
-    print(json_result)
     token = json_result["access_token"]
-    return token
+    refresh_token = json_result["refresh_token"]
+    return token, refresh_token
+
+def get_new_token(refresh_token):
+    url = "https://accounts.spotify.com/api/token"
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+    data = {"grant_type": "refresh_token",
+            "refresh_token": refresh_token,
+            "client_id": client_id}
+    result = post(url, headers=headers, data=data)
+    json_result = json.loads(result.content)
+    token = json_result["access_token"]
+    refresh_token = json_result["refresh_token"]
+    return token, refresh_token
+
 
 # Only needed for use without OAuth
 def get_token():
@@ -169,7 +234,12 @@ def songs_in_A_and_B(token, playlist_a_id, playlist_b_id):
 
 if __name__ == "__main__":
 
-    token = authorize(random_string(128))
+    token, refresh_token = authorize()
+
+    print(get_profile(token))
+
+    token, refresh_token = get_new_token(refresh_token)
+
     print(get_profile(token))
 
     #token = get_token()
