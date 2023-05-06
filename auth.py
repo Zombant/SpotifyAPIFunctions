@@ -104,6 +104,7 @@ Content-Type: text/html
     refresh_token = json_result["refresh_token"]
     return token, refresh_token
 
+# Usage: new_token, new_refresh_token = get_new_token(old_refresh_token)
 def get_new_token(refresh_token):
     url = "https://accounts.spotify.com/api/token"
     headers = {
