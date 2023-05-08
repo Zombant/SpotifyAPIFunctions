@@ -23,7 +23,7 @@ def generate_code_challenge(code_verifier):
     return base64.b64encode(m.digest())
 
 # Prompt user to sign in and returns a token
-def authorize():
+def get_auth_token():
     # Generate a random string
     code_verifier = random_string(128)
 
@@ -121,7 +121,7 @@ def get_new_token(refresh_token):
 
 
 # Only needed for use without OAuth
-def get_token():
+def get_standard_token():
     auth_string = client_id + ":" + client_secret
     auth_bytes = auth_string.encode("utf-8")
     auth_base64 = str(base64.b64encode(auth_bytes), "utf-8")
