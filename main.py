@@ -52,11 +52,20 @@ def load_token(file):
 
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("-c", "--create-token", required=False, action='store_true', help="Request and store a new token by logging in user")
-    arg_parser.add_argument("-r", "--refresh-token", required=False, action='store_true', help="Refresh stored token")
-    arg_parser.add_argument("-p", "--pause", required=False, action='store_true', help="Pause playback")
-    arg_parser.add_argument("-q", "--play", required=False, action='store_true', help="Resume playback")
-    
+    arg_parser.add_argument("-a", "--create-token", required=False, action='store_true', help="Request and store a new token by logging in user")
+    arg_parser.add_argument("-b", "--refresh-token", required=False, action='store_true', help="Refresh stored token")
+    arg_parser.add_argument("-c", "--pause", required=False, action='store_true', help="Pause playback")
+    arg_parser.add_argument("-d", "--play", required=False, action='store_true', help="Resume playback")
+    arg_parser.add_argument("-e", "--toggle", required=False, action='store_true', help="Toggle playback")
+    arg_parser.add_argument("-f", "--is-playing", required=False, action='store_true', help="Return True if player is playing")
+    arg_parser.add_argument("-g", "--next", required=False, action='store_true', help="Next track")
+    arg_parser.add_argument("-i", "--previous", required=False, action='store_true', help="Previous track")
+    arg_parser.add_argument("-j", "--list-devices", required=False, action='store_true', help="List available devices")
+    arg_parser.add_argument("-k", "--transfer-playback", required=False, action='store', help="Transfer playback to another device")
+    arg_parser.add_argument("-l", "--current-device", required=False, action='store_true', help="Get the name and id of the current device")
+    arg_parser.add_argument("-m", "--current-track", required=False, action='store_true', help="Get the currently playing track")
+
+
     args = arg_parser.parse_args()
 
     # TODO: Don't store tokens in plain text
@@ -87,3 +96,52 @@ if __name__ == "__main__":
         resume_playback(load_token(token_file))
         exit()
 
+    if args.toggle:
+        try:
+            is_playing = get_playback_state(load_token(token_file))['is_playing']
+        except:
+            is_playing = None
+            print('Could not toggle')
+        if is_playing == True:
+            pause_playback(load_token(token_file))
+        elif is_playing == False:
+            resume_playback(load_token(token_file))
+        exit()
+
+    if args.is_playing:
+        try:
+            print(get_playback_state(load_token(token_file))['is_playing'])
+        except:
+            print('Could not get playback state')
+            exit()
+
+    if args.next:
+        next_track(load_token(token_file))
+        exit()
+
+    if args.previous:
+        previous_track(load_token(token_file))
+        exit()
+
+    if args.list_devices:
+        devices = get_available_devices(load_token(token_file))['devices']
+        for i, device in enumerate(devices):
+            print(f"{device['name']} - {device['id']}")
+        exit()
+
+    if args.transfer_playback != None:
+        transfer_playback(load_token(token_file), args.transfer_playback, False)
+        exit()
+
+    if args.current_track:
+        track = get_current_track(load_token(token_file))
+        for i in range(0, len(track['item']['artists'])):
+            print(f"Artist: {track['item']['artists'][i]['name']}")
+        print(f"Track: {track['item']['name']}")
+        print(f"Album: {track['item']['album']['name']}")
+        exit()
+
+    if args.current_device:
+        playback_state = get_playback_state(load_token(token_file))
+        print(f"{playback_state['device']['name']} - {playback_state['device']['id']}")
+        exit()
