@@ -29,7 +29,7 @@ def get_auth_token():
 
     # Generate authentication URL and open browser to authentication window
     state = random_string(16)
-    scope = 'user-read-playback-state user-modify-playback-state user-read-currently-playing user-read-private user-read-recently-played'
+    scope = 'user-read-playback-state user-modify-playback-state user-read-currently-playing user-read-private user-read-recently-played playlist-read-private'
 
     args = f"?client_id={client_id}&response_type=code&redirect_uri={redirect_uri}&state={state}&scope={scope}&code_challenge_method=S256&code_challenge={generate_code_challenge(code_verifier).decode().replace('+', '-').replace('/', '_').replace('=', '')}"
     url = "https://accounts.spotify.com/authorize" + args

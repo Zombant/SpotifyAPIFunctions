@@ -13,10 +13,10 @@ import argparse
 import os
 
 
-def get_playlist_items(token, playlist_id):
+def list_playlist_items(token, playlist_id):
     playlist_items = []
     
-    songs = get_playlist(token, playlist_id, 0)
+    songs = get_playlist(token, playlist_id, page=0)
     playlist_size = songs['total']
     
     page = 0
@@ -32,19 +32,68 @@ def get_playlist_items(token, playlist_id):
     
     return playlist_items
 
-def print_playlist(token, playlist_id):
-    for i, song in enumerate(get_playlist_items(token, playlist_id)):
-        print(f"{i}. {song}")
+def print_playlist_items(token, playlist_id, show_json=False):
+    for i, song in enumerate(list_playlist_items(token, playlist_id)):
+        if show_json:
+            print(f"{i}. {song}")
+        else:
+            print(f"{i}. {song['artist']} - {song['name']}")
+
+def list_user_playlists(token, user_id=None, owned_only=False):
+    playlists_list = []
+
+    playlists_tmp = get_user_playlists(token, 0, user_id)
+    num_playlists = playlists_tmp['total']
+    
+    if user_id == None:
+        user_id = get_current_profile(load_token(token_file))['id']
+
+    page = 0
+    count = 0
+    while count < num_playlists:
+        playlists_tmp = get_user_playlists(token, page, user_id)
         
+        for i, playlist in enumerate(playlists_tmp['items']):
+            if not (owned_only and (user_id != playlists_tmp['items'][i]['owner']['id'])):
+                playlists_list.append({
+                    'id': playlists_tmp['items'][i]['id'],
+                    'name': playlists_tmp['items'][i]['name']
+                })
+            count += 1
+        page += 1
+
+    return playlists_list
+
+def print_user_playlists(token, user_id=None, list_items=True, show_json=False, owned_only=False):
+    user_playlists = list_user_playlists(token, user_id, owned_only)
+
+    for i, playlist in enumerate(user_playlists):
+
+        if show_json:
+            print(f"{i}. {playlist}")
+        else:
+            print(f"{i}. {playlist['name']}")
+
+        if list_items == False:
+            continue
+
+        for j, song in enumerate(list_playlist_items(token, playlist['id'])):
+            if show_json:
+                print(f"\t{j}. {song}")
+            else:
+                print(f"\t{j}. {song['artist']} - {song['name']}")
+
+
 def songs_in_A_not_in_B(token, playlist_a_id, playlist_b_id):
-    playlist_a = get_playlist_items(token, playlist_a_id)
-    playlist_b = get_playlist_items(token, playlist_b_id)
+    playlist_a = list_playlist_items(token, playlist_a_id)
+    playlist_b = list_playlist_items(token, playlist_b_id)
     return [item for item in playlist_a if item not in playlist_b]
 
 def songs_in_A_and_B(token, playlist_a_id, playlist_b_id):
-    playlist_a = get_playlist_items(token, playlist_a_id)
-    playlist_b = get_playlist_items(token, playlist_b_id)
+    playlist_a = list_playlist_items(token, playlist_a_id)
+    playlist_b = list_playlist_items(token, playlist_b_id)
     return [item for item in playlist_a if item in playlist_b]
+
 
 def load_token(file):
     with open(file, 'r') as f:
@@ -89,11 +138,27 @@ if __name__ == "__main__":
         exit()
     
     if args.pause:
-        pause_playback(load_token(token_file))
+        if pause_playback(load_token(token_file)).status_code == 404:
+            print("Unable to pause")
+            exit(1)
         exit()
 
     if args.play:
-        resume_playback(load_token(token_file))
+        if resume_playback(load_token(token_file)).status_code == 404:
+            print("Unable to resume")
+            exit(1)
+        exit()
+
+    if args.next:
+        if next_track(load_token(token_file)).status_code == 404:
+            print("Unable to play next track")
+            exit(1)
+        exit()
+
+    if args.previous:
+        if previous_track(load_token(token_file)).status_code == 404:
+            print("Unable to play previous track")
+            exit(1)
         exit()
 
     if args.toggle:
@@ -101,7 +166,7 @@ if __name__ == "__main__":
             is_playing = get_playback_state(load_token(token_file))['is_playing']
         except:
             is_playing = None
-            print('Could not toggle')
+            print('Unable to toggle')
         if is_playing == True:
             pause_playback(load_token(token_file))
         elif is_playing == False:
@@ -112,15 +177,8 @@ if __name__ == "__main__":
         try:
             print(get_playback_state(load_token(token_file))['is_playing'])
         except:
-            print('Could not get playback state')
-            exit()
-
-    if args.next:
-        next_track(load_token(token_file))
-        exit()
-
-    if args.previous:
-        previous_track(load_token(token_file))
+            print('Unable to get playback state')
+            exit(1)
         exit()
 
     if args.list_devices:
@@ -130,18 +188,34 @@ if __name__ == "__main__":
         exit()
 
     if args.transfer_playback != None:
-        transfer_playback(load_token(token_file), args.transfer_playback, False)
+        if transfer_playback(load_token(token_file), args.transfer_playback, False).status_code == 404:
+            print("Unable to transfer playback")
+            exit(1)
         exit()
 
     if args.current_track:
-        track = get_current_track(load_token(token_file))
+        try:
+            track = get_current_track(load_token(token_file))
+        except:
+            print("Unable to get current track")
+            exit(1)
+
         for i in range(0, len(track['item']['artists'])):
             print(f"Artist: {track['item']['artists'][i]['name']}")
         print(f"Track: {track['item']['name']}")
         print(f"Album: {track['item']['album']['name']}")
         exit()
+        
 
     if args.current_device:
-        playback_state = get_playback_state(load_token(token_file))
-        print(f"{playback_state['device']['name']} - {playback_state['device']['id']}")
+        try:
+            playback_state = get_playback_state(load_token(token_file))
+            print(f"{playback_state['device']['name']} - {playback_state['device']['id']}")
+        except:
+            print("Unable to get current device")
+            exit(1)
+
         exit()
+
+    #user_id = get_current_profile(load_token(token_file))['id']
+    print_user_playlists(load_token(token_file), user_id=None, list_items=False, show_json=False, owned_only=False)
